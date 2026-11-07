@@ -54,7 +54,9 @@ UPDATE_PACKAGE "argon" "sbwml/luci-theme-argon" "openwrt-25.12"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "shadcn" "eamonxg/luci-theme-shadcn" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "theme-fluent" "LazuliKao/luci-theme-fluent" "main"
 
-UPDATE_PACKAGE "homeproxy" "VIKINGYFY/homeproxy" "main"
+# 618-v2 honk: HomeProxy/sing-box 已移除，代理只用 honk。honk 不走构建 feed，
+# 由 daeuniverse apk feed 提供（honk-0.1.0_beta5-r1.apk），feed 仓库与签名由 Handles.sh 写入镜像，刷机后 apk 安装（见 PLAN.md）。
+# （此前官方 HomeProxy + sing-box 1.14.4 的准备已全部作废，见 PLAN.md。)
 UPDATE_PACKAGE "momo" "nikkinikki-org/OpenWrt-momo" "main"
 UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
 #UPDATE_PACKAGE "openclash" "vernesong/OpenClash" "dev" "pkg"
@@ -77,12 +79,14 @@ UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
 #UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "quickfile" "sbwml/luci-app-quickfile" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "timecontrol" "sirpdboy/luci-app-timecontrol" "main"
-UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "axonhub gecoosac sing-box luci-app-homeproxy luci-app-timewol luci-app-wolplus luci-app-wolultra"
+# 618-v2 honk: viking 克隆已删除——它只提供 sing-box + AI Edition HomeProxy + axonhub/gecoosac/timewol，
+# 其中 sing-box/HomeProxy 已移除，其余在 GENERAL.txt 里都是 =n 或未选，克隆它只浪费构建时间。
+# （此前 sing-box 1.14.4 钉死与 multi_queue 删除段已随 HomeProxy 一并作废，见 PLAN.md。)
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 
 
-UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "kix"
-UPDATE_PACKAGE "luci-app-dae" "davidtall/luci-app-dae" "main"
+# REMOVED for 618-v2: dae/daed 已移除（dae 2.1.1 不再编入；daed 为已归档的 dae 面板，
+# Handles.sh 里原有的强制禁用 daed 不再需要亦无害，予以保留作兜底）
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "luci-app-nginx-manager" "hello-yunshu/luci-app-nginx-manager" "main"
 #UPDATE_PACKAGE "luci-app-dockerman" "lisaac/luci-app-dockerman" "master"
@@ -143,7 +147,4 @@ rm -rf ../feeds/packages/net/{v2ray-geodata,dae*}
 cp -r $GITHUB_WORKSPACE/package/v2ray-geodata ./
 
 
-#修复daed/Makefile
-#rm -rf luci-app-daed/daed/Makefile && cp -r $GITHUB_WORKSPACE/patches/daed/Makefile luci-app-daed/daed/
-sed -i 's/pnpm install ; \\/pnpm install --no-frozen-lockfile ; \\/g' luci-app-daed/daed/Makefile
-sed -i 's|/run/i\\  procd_set_param|/procd_set_param command/i \\\tprocd_set_param|g' luci-app-daed/luci-app-daed/root/etc/init.d/luci_daed
+# REMOVED for 618-v2: daed 修复段随 daed 克隆一并删除
