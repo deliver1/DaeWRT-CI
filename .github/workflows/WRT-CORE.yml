@@ -197,7 +197,7 @@ jobs:
       # 编译前关键步骤：MD5 校验 + staging_dir 替换 + hostapd 补丁
       # ============================================================
       - name: Override BDF Before Compile
-        if: env.WRT_TEST != 'true'
+        if: env.WRT_TEST != 'true' && !contains(env.WRT_CONFIG, 'NOWIFI')
         run: |
           # 1. BDF MD5 校验
           EXPECTED_MD5="9b04d4a7e5ce6391b899a6f61526366b"
