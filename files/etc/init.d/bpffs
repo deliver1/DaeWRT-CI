@@ -1,0 +1,16 @@
+#!/bin/sh /etc/rc.common
+# bpffs - mount the BPF filesystem at /sys/fs/bpf at boot (required by honk: eBPF maps are pinned here).
+# Installed by DaeWRT-CI 618-v2 (honk-only). honk will not start without bpffs.
+# See honk how-to-start: mount -t bpf bpf /sys/fs/bpf (or fstab entry "bpf /sys/fs/bpf bpf defaults 0 0").
+# OpenWrt has no block-mount/fstab mechanism in this lean build, so a dedicated init script does it.
+START=10
+STOP=90
+
+boot() {
+	[ -d /sys/fs/bpf ] || mkdir -p /sys/fs/bpf
+	grep -qs ' /sys/fs/bpf ' /proc/mounts || mount -t bpf bpf /sys/fs/bpf
+}
+
+start() {
+	boot
+}
