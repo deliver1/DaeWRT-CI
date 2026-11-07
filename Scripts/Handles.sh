@@ -2,27 +2,7 @@
 
 PKG_PATH="$GITHUB_WORKSPACE/$WRT_DIR/package/"
 
-#预置HomeProxy数据
-if [ -d *"homeproxy"* ]; then
-	echo " "
-
-	HP_RULE="surge"
-	HP_PATH="homeproxy/root/etc/homeproxy"
-
-	rm -rf ./$HP_PATH/resources/*
-
-	git clone -q --depth=1 --single-branch --branch "release" "https://github.com/Loyalsoldier/surge-rules.git" ./$HP_RULE/
-	cd ./$HP_RULE/ && RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*")
-
-	echo $RES_VER | tee china_ip4.ver china_ip6.ver china_list.ver gfw_list.ver
-	awk -F, '/^IP-CIDR,/{print $2 > "china_ip4.txt"} /^IP-CIDR6,/{print $2 > "china_ip6.txt"}' cncidr.txt
-	sed 's/^\.//g' direct.txt > china_list.txt ; sed 's/^\.//g' gfw.txt > gfw_list.txt
-	mv -f ./{china_*,gfw_list}.{ver,txt} ../$HP_PATH/resources/
-
-	cd .. && rm -rf ./$HP_RULE/
-
-	cd $PKG_PATH && echo "homeproxy date has been updated!"
-fi
+# 618-v2 honk: HomeProxy 预置数据块已删除（HomeProxy/sing-box 已移除，不再需要 surge-rules geo 数据）。
 
 #修改argon主题字体和颜色
 if [ -d "$PKG_PATH/luci-theme-argon" ]; then
@@ -134,6 +114,9 @@ fi
 # ============================================================
 # 直接替换 BDF（进 squashfs，开机即 29dBm）
 # ============================================================
+# 618-v2: 仅非 NOWIFI 构建执行——NOWIFI 无 WiFi，BDF（board-2.bin）进 squashfs 纯属浪费；
+# 且 BDF 源文件缺失时本段会 exit 1 中断构建。NOWIFI 构建直接跳过整段。
+if [[ "$WRT_CONFIG" != *"NOWIFI"* ]]; then
 echo ">>> Setting up direct BDF replacement..."
 
 BDF_SRC="$GITHUB_WORKSPACE/files/board-2.bin"
@@ -165,6 +148,7 @@ fi
 find "$WRT_ROOT/staging_dir" -name ".base-files*" -type f -delete 2>/dev/null
 find "$WRT_ROOT/staging_dir" -name ".ipq-wifi*" -type f -delete 2>/dev/null
 echo "  Stamps cleared"
+fi # end of BDF block (non-NOWIFI only)
 
 # ============================================================
 # 内存优化 sysctl 配置（首次启动自动生效）
@@ -196,5 +180,22 @@ net.ipv4.tcp_wmem=4096 65536 262144
 SYSCTLEOF
 
 echo "  sysctl config added"
+
+# ============================================================
+# 618-v2 honk: 覆盖层文件（bpffs 开机挂载 + daeuniverse apk feed）
+# ============================================================
+# 仓库 files/etc/（bpffs 启动脚本、apk feed 仓库与签名）复制到构建根目录的 files/ 覆盖层，
+# OpenWrt 构建会把 files/ 原样打进镜像。注意：本仓库 files/ 顶层还有 BDF 文件（board-2.bin），
+# 这里只复制 files/etc/，不碰 BDF。bpffs 脚本需可执行，复制后显式 chmod +x（防 web UI 上传丢权限）。
+echo ">>> Installing honk overlay (bpffs init + daeuniverse apk feed)..."
+if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
+	mkdir -p "$WRT_ROOT/files"
+	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
+	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
+	echo "  honk overlay copied:"
+	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
+else
+	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount, apk feed will not be preinstalled)"
+fi
 
 echo ">>> Handles.sh done"
