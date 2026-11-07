@@ -1,10 +1,11 @@
 # ============================================================
-# GENERAL.txt - Redmi AX6 轻量化（dae + NSS + iperf3）
+# GENERAL.txt - Redmi AX6 轻量化（honk + NSS + iperf3，无 dae/HomeProxy/sing-box）
 # ============================================================
 
-# ---------- 科学插件 ----------
-CONFIG_PACKAGE_luci-app-dae=y
-CONFIG_PACKAGE_sing-box=y
+# ---------- 代理核心：honk（dae/HomeProxy/sing-box 均已移除） ----------
+# honk 不编进固件：daeuniverse apk feed 提供 honk-0.1.0_beta5-r1.apk（aarch64 musl-full 静态二进制，内嵌 Doona 面板），
+# 刷机后 apk add honk@daeuniverse luci-app-honk@daeuniverse。feed 仓库与签名由 Handles.sh 写入镜像（见 PLAN.md）。
+# 因此这里没有 CONFIG_PACKAGE_honk；下面只保留 honk 运行时需要的内核模块与 geo 数据。
 
 # ---------- 插件（只留 UPnP） ----------
 CONFIG_PACKAGE_luci-app-upnp=y
@@ -35,7 +36,7 @@ CONFIG_PACKAGE_ipq-wifi-redmi_ax6=n
 CONFIG_PACKAGE_kmod-nft-offload=n
 CONFIG_PACKAGE_kmod-nf-flow=n
 
-# ---------- dae 运行时内核模块 ----------
+# ---------- 透明代理 / 网络诊断内核模块（honk 建 dae0 接口需 kmod-tun；dae/HomeProxy/sing-box 已移除） ----------
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-veth=y
 CONFIG_PACKAGE_kmod-inet-diag=y
@@ -49,8 +50,13 @@ CONFIG_PACKAGE_kmod-sched-bpf=y
 # ---------- nftables 与 NAT ----------
 CONFIG_PACKAGE_kmod-nft-core=y
 CONFIG_PACKAGE_kmod-nft-nat=y
-CONFIG_PACKAGE_kmod-nft-tproxy=y
+CONFIG_PACKAGE_kmod-nft-tproxy=n
+CONFIG_PACKAGE_kmod-nft-socket=n
+# honk 不用 TProxy（eBPF + NFQUEUE），HomeProxy 已移除，故两者都关掉；6.18 版曾含 kmod-nft-tproxy，v2 不再需要。
 CONFIG_PACKAGE_kmod-nft-fullcone=y
+# honk UDP 首包暂存必需：nft queue（NFQUEUE 320）+ netlink queue；6.18 版曾由 dae 间接带入，v2 显式钉死。
+CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
 
 # ---------- 连接跟踪 ----------
 CONFIG_PACKAGE_kmod-nf-conntrack=y
@@ -85,7 +91,6 @@ CONFIG_PACKAGE_ucode-mod-math=y
 # ============================================================
 
 # ---------- 已关闭的插件 ----------
-CONFIG_PACKAGE_luci-app-homeproxy=y
 CONFIG_PACKAGE_luci-app-autoreboot=y
 CONFIG_PACKAGE_luci-app-gecoosac=n
 CONFIG_PACKAGE_luci-app-mini-diskmanager=n
@@ -122,6 +127,10 @@ CONFIG_PACKAGE_openssh-sftp-server=y
 CONFIG_PACKAGE_openssl-util=y
 CONFIG_PACKAGE_xz-utils=n
 CONFIG_PACKAGE_v2ray-geodata-updater=y
+# honk 路由规则用 geoip/geosite 数据（原由 dae 带入，dae 移除后显式保留）；ca-bundle 供 geo 更新器 HTTPS 下载用。
+CONFIG_PACKAGE_ca-bundle=y
+CONFIG_PACKAGE_v2ray-geoip=y
+CONFIG_PACKAGE_v2ray-geosite=y
 
 # ---------- 已关闭的内核模块 ----------
 CONFIG_PACKAGE_kmod-bonding=n
@@ -139,6 +148,82 @@ CONFIG_PACKAGE_kmod-nft-connlimit=n
 CONFIG_PACKAGE_kmod-nft-dup-inet=n
 CONFIG_PACKAGE_kmod-nft-fib=n
 CONFIG_PACKAGE_kmod-nft-netdev=n
-CONFIG_PACKAGE_kmod-nft-queue=n
-CONFIG_PACKAGE_kmod-nft-socket=n
 CONFIG_PACKAGE_kmod-nft-xfrm=n
+
+# ---------- USB（AX6 无 USB 口；6.18 版实测含 13 个 kmod-usb-* 包） ----------
+# 总开关：关掉后 automount 的 USB_SUPPORT: 条件依赖全部失效；
+# 再由 function.sh 的 remove_usb_fs_tunnels() 从 target 默认包里剔除（=n 单独写未必能覆盖 DEFAULT_PACKAGES）。
+CONFIG_USB_SUPPORT=n
+CONFIG_PACKAGE_kmod-usb-core=n
+CONFIG_PACKAGE_kmod-usb-common=n
+CONFIG_PACKAGE_kmod-usb-ohci=n
+CONFIG_PACKAGE_kmod-usb2=n
+CONFIG_PACKAGE_kmod-usb3=n
+CONFIG_PACKAGE_kmod-usb-dwc3=n
+CONFIG_PACKAGE_kmod-usb-dwc3-qcom=n
+CONFIG_PACKAGE_kmod-usb-roles=n
+CONFIG_PACKAGE_kmod-usb-xhci-hcd=n
+CONFIG_PACKAGE_kmod-usb-storage=n
+CONFIG_PACKAGE_kmod-usb-storage-extras=n
+CONFIG_PACKAGE_kmod-usb-storage-uas=n
+CONFIG_PACKAGE_kmod-usb-serial=n
+CONFIG_PACKAGE_kmod-usb-serial-qualcomm=n
+CONFIG_PACKAGE_kmod-usb-serial-wwan=n
+CONFIG_PACKAGE_kmod-usb-net=n
+CONFIG_PACKAGE_kmod-usb-net-cdc-ether=n
+CONFIG_PACKAGE_kmod-usb-net-cdc-eem=n
+CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=n
+CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=n
+CONFIG_PACKAGE_kmod-usb-net-cdc-subset=n
+CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=n
+CONFIG_PACKAGE_kmod-usb-net-ipheth=n
+CONFIG_PACKAGE_kmod-usb-net-rndis=n
+CONFIG_PACKAGE_kmod-usb-net-rtl8150=n
+CONFIG_PACKAGE_kmod-usb-net-rtl8152=n
+CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=n
+CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-fibocom=n
+CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-quectel=n
+CONFIG_PACKAGE_usbutils=n
+CONFIG_PACKAGE_kmod-scsi-core=n
+
+# ---------- 外接存储文件系统与挂载（AX6 无 USB/SATA，无外接硬盘） ----------
+# automount 是 kmod-usb-storage / kmod-fs-* / e2fsprogs / block-mount 的总入口，
+# 关掉它整条链自动掉落；f2fs/ext4/losetup 在 target 默认包里，同样由 remove_usb_fs_tunnels() 剔除。
+CONFIG_PACKAGE_automount=n
+CONFIG_PACKAGE_block-mount=n
+CONFIG_PACKAGE_kmod-fs-ext4=n
+CONFIG_PACKAGE_kmod-fs-f2fs=n
+CONFIG_PACKAGE_kmod-fs-vfat=n
+CONFIG_PACKAGE_kmod-fs-exfat=n
+CONFIG_PACKAGE_kmod-fs-ntfs3=n
+CONFIG_PACKAGE_ntfs3-mount=n
+CONFIG_PACKAGE_e2fsprogs=n
+CONFIG_PACKAGE_f2fs-tools=n
+CONFIG_PACKAGE_losetup=n
+CONFIG_PACKAGE_kmod-nls-base=n
+CONFIG_PACKAGE_kmod-nls-cp437=n
+CONFIG_PACKAGE_kmod-nls-iso8859-1=n
+CONFIG_PACKAGE_kmod-nls-utf8=n
+CONFIG_PACKAGE_fdisk=n
+CONFIG_PACKAGE_lsblk=n
+CONFIG_PACKAGE_mdadm=n
+
+# ---------- 未用隧道协议（无 6in4/GRE/NAT46/VXLAN 需求） ----------
+# 注意：6rd 由 luci-proto-ipv6（DHCPv6 必需）带入时 defconfig 会自动恢复，属正常，
+# 届时 kmod-sit 也会一并回来（未用，无流量经过）；其余与保留项无依赖关系。
+CONFIG_PACKAGE_6rd=n
+CONFIG_PACKAGE_kmod-sit=n
+CONFIG_PACKAGE_kmod-gre=n
+CONFIG_PACKAGE_kmod-gre6=n
+CONFIG_PACKAGE_kmod-nat46=n
+CONFIG_PACKAGE_kmod-ip6-tunnel=n
+CONFIG_PACKAGE_kmod-iptunnel=n
+CONFIG_PACKAGE_kmod-iptunnel4=n
+CONFIG_PACKAGE_kmod-iptunnel6=n
+CONFIG_PACKAGE_kmod-vxlan=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-gre=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-tun6rd=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-tunipip6=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-vxlanmgr=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-eogremgr=n
+CONFIG_PACKAGE_kmod-qca-nss-drv-map-t=n
