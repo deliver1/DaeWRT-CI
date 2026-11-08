@@ -182,20 +182,32 @@ SYSCTLEOF
 echo "  sysctl config added"
 
 # ============================================================
-# 618-v2b honk: 覆盖层文件（bpffs 开机挂载）+ honk 二进制编进固件
+# 618-v2b honk: 覆盖层文件（bpffs 开机挂载 + honk 默认配置 + honk 开机自启）
 # V2 原版走 daeuniverse apk feed 装 honk，但 feed 是按 OpenWrt 25.12/6.12 打的包，
 # 在 ImmortalWrt SNAPSHOT 6.18 上装不装得上没验证过；装不上 V2 就完全没代理可用。
 # v2b 改成构建时直接从 honk 官方 Release 下载 full 包，把 honk-core 编进固件，
 # 不再依赖 feed（feed 的仓库与签名文件已从本分支删除）。
 # honk-core 是 full 版，doona 已内嵌在二进制里，不需要另外装 doona 文件。
+# 开机即用：files/etc/honk/config.dae 是默认配置（无节点、全部直连，Doona 可打开），
+# files/etc/init.d/honk 开机自动启动 honk；刷好就能上网，节点在 Doona 浏览器里加，不用 SSH。
 # ============================================================
-echo ">>> Installing honk overlay (bpffs init)..."
+echo ">>> Installing honk overlay (bpffs init + honk config + honk init)..."
 if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	mkdir -p "$WRT_ROOT/files"
 	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
 	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
+	[ -f "$WRT_ROOT/files/etc/init.d/honk" ] && chmod +x "$WRT_ROOT/files/etc/init.d/honk"
+	# bpffs 必须开机自动挂载（honk 要用 /sys/fs/bpf）：overlay 里的 init 脚本默认不自动启用，
+	# 这里显式建 rc.d 软链让它开机跑。
+	# honk 本体故意不建 rc.d 软链、不开机自动跑——Elena 自己在 LuCI（系统 → 启动项）里启动/设置。
+	mkdir -p "$WRT_ROOT/files/etc/rc.d"
+	if [ -f "$WRT_ROOT/files/etc/init.d/bpffs" ]; then
+		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/S10bpffs"
+		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/K90bpffs"
+		echo "  bpffs enabled at boot (S10bpffs); honk NOT enabled (Elena starts it herself)"
+	fi
 	echo "  honk overlay copied:"
-	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
+	find "$WRT_ROOT/files/etc" -type f -o -type l | sed 's/^/    /'
 else
 	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount)"
 fi
