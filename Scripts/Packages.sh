@@ -54,12 +54,16 @@ UPDATE_PACKAGE "argon" "sbwml/luci-theme-argon" "openwrt-25.12"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "shadcn" "eamonxg/luci-theme-shadcn" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "theme-fluent" "LazuliKao/luci-theme-fluent" "main"
 
-# 618-v2 honk: HomeProxy/sing-box 已移除，代理只用 honk。honk 不走构建 feed，
-# 由 daeuniverse apk feed 提供（honk-0.1.0_beta5-r1.apk），feed 仓库与签名由 Handles.sh 写入镜像，刷机后 apk 安装（见 PLAN.md）。
-# （此前官方 HomeProxy + sing-box 1.14.4 的准备已全部作废，见 PLAN.md。)
+# 618-v4 mihomo via OpenClash: honk 已移除（不走 daeuniverse apk feed，不再需要 feed 仓库与签名）。
+# OpenClash 由下行以 "pkg" 方式从 vernesong/OpenClash 的 dev 分支提取 luci-app-openclash 包目录，随固件编译；
+# mihomo 核心由 GENERAL.txt 的 CONFIG_LUCI_APP_OPENCLASH_INCLUDE_CORE=y 在构建时从 core 分支下载并装进镜像（见 PLAN.md 第 2 节）。
+# （此前官方 HomeProxy + sing-box 1.14.4 的准备已全部作废，见 V2 PLAN.md。)
 UPDATE_PACKAGE "momo" "nikkinikki-org/OpenWrt-momo" "main"
 UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
-#UPDATE_PACKAGE "openclash" "vernesong/OpenClash" "dev" "pkg"
+# 618-v4: OpenClash——V4 唯一代理。dev 分支（非 master）：dev 才有 INCLUDE_CORE 构建时编入核心的选项（master 0.48.002 没有），
+# 且 dev 是上游活跃开发分支（当前 0.48.014）。"pkg" 表示从克隆的大杂烩仓库里只提取名为 *openclash* 的包目录（即 luci-app-openclash），
+# 其余文件（img/ 等）不进构建；UPDATE_PACKAGE 开头会先删 feeds 里已有的同名目录，防冲突。mihomo 核心不由这里提供，见 GENERAL.txt 的 INCLUDE_CORE。
+UPDATE_PACKAGE "openclash" "vernesong/OpenClash" "dev" "pkg"
 #UPDATE_PACKAGE "passwall" "Openwrt-Passwall/openwrt-passwall" "main" "pkg"
 #UPDATE_PACKAGE "passwall2" "Openwrt-Passwall/openwrt-passwall2" "main" "pkg"
 
@@ -79,9 +83,9 @@ UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
 #UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "quickfile" "sbwml/luci-app-quickfile" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "timecontrol" "sirpdboy/luci-app-timecontrol" "main"
-# 618-v2 honk: viking 克隆已删除——它只提供 sing-box + AI Edition HomeProxy + axonhub/gecoosac/timewol，
-# 其中 sing-box/HomeProxy 已移除，其余在 GENERAL.txt 里都是 =n 或未选，克隆它只浪费构建时间。
-# （此前 sing-box 1.14.4 钉死与 multi_queue 删除段已随 HomeProxy 一并作废，见 PLAN.md。)
+# 618-v2 起 viking 克隆已删除——它只提供 sing-box + AI Edition HomeProxy + axonhub/gecoosac/timewol，
+# 其中 sing-box/HomeProxy 已移除，其余在 GENERAL.txt 里都是 =n 或未选，克隆它只浪费构建时间。V4 同样不加回。
+# （此前 sing-box 1.14.4 钉死与 multi_queue 删除段已随 HomeProxy 一并作废，见 V2 PLAN.md。)
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 
 
