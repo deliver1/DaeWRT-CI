@@ -191,26 +191,32 @@ echo "  sysctl config added"
 # 开机即用：files/etc/honk/config.dae 是默认配置（无节点、全部直连，Doona 可打开），
 # files/etc/init.d/honk 开机自动启动 honk；刷好就能上网，节点在 Doona 浏览器里加，不用 SSH。
 # ============================================================
-echo ">>> Installing honk overlay (bpffs init + honk config + honk init)..."
+echo ">>> Installing honk overlay (bpffs init + honk config + honk-core init)..."
 if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	mkdir -p "$WRT_ROOT/files"
 	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
 	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
-	[ -f "$WRT_ROOT/files/etc/init.d/honk" ] && chmod +x "$WRT_ROOT/files/etc/init.d/honk"
+	[ -f "$WRT_ROOT/files/etc/init.d/honk-core" ] && chmod +x "$WRT_ROOT/files/etc/init.d/honk-core"
+	# 配置文件 0600（native_api.dae 里有 Doona 密钥）；数据目录预建好。
+	[ -f "$WRT_ROOT/files/etc/honk/config.dae" ] && chmod 600 "$WRT_ROOT/files/etc/honk/config.dae"
+	[ -f "$WRT_ROOT/files/etc/honk/native_api.dae" ] && chmod 600 "$WRT_ROOT/files/etc/honk/native_api.dae"
+	mkdir -p "$WRT_ROOT/files/etc/honk/data"
 	# bpffs 必须开机自动挂载（honk 要用 /sys/fs/bpf）：overlay 里的 init 脚本默认不自动启用，
 	# 这里显式建 rc.d 软链让它开机跑。
-	# honk 开机自动跑（Elena 2026-11-08 13:56 要求）：建 rc.d 软链 S99honk/K10honk，
+	# honk-core 开机自动跑（Elena 2026-11-08 13:56 要求）：建 rc.d 软链 S99honk-core/K10honk-core，
 	# 刷完 honk 自动启动，默认配置全直连，Doona 可打开，她进固件后再改配置加节点。
+	# 服务名 honk-core、启动参数 --data-dir/--disable-timestamp、limits、reload_service
+	# 均按官方 OpenWrt procd 文档（daeuniverse.org/doona/service-management）。
 	mkdir -p "$WRT_ROOT/files/etc/rc.d"
 	if [ -f "$WRT_ROOT/files/etc/init.d/bpffs" ]; then
 		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/S10bpffs"
 		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/K90bpffs"
 		echo "  bpffs enabled at boot (S10bpffs)"
 	fi
-	if [ -f "$WRT_ROOT/files/etc/init.d/honk" ]; then
-		ln -sf ../init.d/honk "$WRT_ROOT/files/etc/rc.d/S99honk"
-		ln -sf ../init.d/honk "$WRT_ROOT/files/etc/rc.d/K10honk"
-		echo "  honk enabled at boot (S99honk, all-direct default config)"
+	if [ -f "$WRT_ROOT/files/etc/init.d/honk-core" ]; then
+		ln -sf ../init.d/honk-core "$WRT_ROOT/files/etc/rc.d/S99honk-core"
+		ln -sf ../init.d/honk-core "$WRT_ROOT/files/etc/rc.d/K10honk-core"
+		echo "  honk-core enabled at boot (S99honk-core, all-direct default config)"
 	fi
 	echo "  honk overlay copied:"
 	find "$WRT_ROOT/files/etc" -type f -o -type l | sed 's/^/    /'
