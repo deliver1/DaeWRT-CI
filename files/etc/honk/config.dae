@@ -12,7 +12,7 @@ global {
     log_level: info
     lan_interface: br-lan
     wan_interface: auto
-    data_dir: '/tmp/honk'
+    data_dir: '/etc/honk/data'
     auto_config_kernel_parameter: true
     bootstrap_resolver: '1.1.1.1:53'
     tcp_check_url: 'http://cp.cloudflare.com,1.1.1.1,2606:4700:4700::1111'
