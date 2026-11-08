@@ -199,12 +199,18 @@ if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	[ -f "$WRT_ROOT/files/etc/init.d/honk" ] && chmod +x "$WRT_ROOT/files/etc/init.d/honk"
 	# bpffs 必须开机自动挂载（honk 要用 /sys/fs/bpf）：overlay 里的 init 脚本默认不自动启用，
 	# 这里显式建 rc.d 软链让它开机跑。
-	# honk 本体故意不建 rc.d 软链、不开机自动跑——Elena 自己在 LuCI（系统 → 启动项）里启动/设置。
+	# honk 开机自动跑（Elena 2026-11-08 13:56 要求）：建 rc.d 软链 S99honk/K10honk，
+	# 刷完 honk 自动启动，默认配置全直连，Doona 可打开，她进固件后再改配置加节点。
 	mkdir -p "$WRT_ROOT/files/etc/rc.d"
 	if [ -f "$WRT_ROOT/files/etc/init.d/bpffs" ]; then
 		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/S10bpffs"
 		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/K90bpffs"
-		echo "  bpffs enabled at boot (S10bpffs); honk NOT enabled (Elena starts it herself)"
+		echo "  bpffs enabled at boot (S10bpffs)"
+	fi
+	if [ -f "$WRT_ROOT/files/etc/init.d/honk" ]; then
+		ln -sf ../init.d/honk "$WRT_ROOT/files/etc/rc.d/S99honk"
+		ln -sf ../init.d/honk "$WRT_ROOT/files/etc/rc.d/K10honk"
+		echo "  honk enabled at boot (S99honk, all-direct default config)"
 	fi
 	echo "  honk overlay copied:"
 	find "$WRT_ROOT/files/etc" -type f -o -type l | sed 's/^/    /'
