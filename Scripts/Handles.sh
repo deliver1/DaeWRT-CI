@@ -187,4 +187,36 @@ echo "  sysctl config added"
 # OpenClash 自带 uci-defaults（首次启动自动建 /etc/openclash/、设核心型号、生成默认配置），不需要 files/ 覆盖层预置配置。
 # ============================================================
 
+# ============================================================
+# 618-v4: 修复 OpenClash INCLUDE_CORE 核心下载 URL（V4 run #5 失败原因）
+# 上游 luci-app-openclash/Makefile 的 Build/Compile 用 shell 变量 $$CORE_ARCH
+# 拼下载 URL（clash-$$CORE_ARCH.tar.gz），在本模板构建里 $$ 被提前展开，
+# 变成 clash-ORE_ARCH.tar.gz（404）。本构建固定是 aarch64/IPQ807X，
+# 直接把 URL 写死成 clash-linux-arm64.tar.gz，绕过变量展开问题。
+# （已验证：clash-linux-arm64.tar.gz 在 core 分支存在，HTTP 200；
+#  mangled 的 clash-ORE_ARCH.tar.gz 是 404。）
+# ============================================================
+echo ">>> Patching OpenClash core download URL..."
+OC_MK=""
+for D in "$WRT_ROOT" "$PKG_PATH" "$WRT_ROOT/feeds/luci" "$WRT_ROOT/feeds/packages"; do
+    if [ -f "$D/luci-app-openclash/Makefile" ]; then OC_MK="$D/luci-app-openclash/Makefile"; break; fi
+done
+if [ -f "$OC_MK" ]; then
+    if grep -q 'clash-\$\$CORE_ARCH\.tar\.gz' "$OC_MK"; then
+        sed -i 's|clash-\$\$CORE_ARCH\.tar\.gz|clash-linux-arm64.tar.gz|g' "$OC_MK"
+        if grep -q 'clash-linux-arm64\.tar\.gz' "$OC_MK"; then
+            echo "  OpenClash core URL patched to linux-arm64: $OC_MK"
+        else
+            echo "  ERROR: OpenClash core URL patch did not take effect"
+            exit 1
+        fi
+    elif grep -q 'clash-linux-arm64\.tar\.gz' "$OC_MK"; then
+        echo "  OpenClash core URL already linux-arm64, nothing to do"
+    else
+        echo "  WARNING: OpenClash Makefile has no recognised core URL, skipping patch"
+    fi
+else
+    echo "  WARNING: luci-app-openclash Makefile not found, skipping patch"
+fi
+
 echo ">>> Handles.sh done"
