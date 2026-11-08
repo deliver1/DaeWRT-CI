@@ -192,6 +192,14 @@ if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	mkdir -p "$WRT_ROOT/files"
 	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
 	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
+	# bpffs 必须开机自动挂载（honk 要用 /sys/fs/bpf）：overlay 里的 init 脚本默认不自动启用，
+	# 这里显式建 rc.d 软链让它开机跑。否则 honk 装完启动会报 pinning 错误。
+	mkdir -p "$WRT_ROOT/files/etc/rc.d"
+	if [ -f "$WRT_ROOT/files/etc/init.d/bpffs" ]; then
+		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/S10bpffs"
+		ln -sf ../init.d/bpffs "$WRT_ROOT/files/etc/rc.d/K90bpffs"
+		echo "  bpffs enabled at boot (S10bpffs)"
+	fi
 	echo "  honk overlay copied:"
 	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
 else
