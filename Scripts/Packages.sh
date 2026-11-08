@@ -54,9 +54,11 @@ UPDATE_PACKAGE "argon" "sbwml/luci-theme-argon" "openwrt-25.12"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "shadcn" "eamonxg/luci-theme-shadcn" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "theme-fluent" "LazuliKao/luci-theme-fluent" "main"
 
-# 618-v2 honk: HomeProxy/sing-box 已移除，代理只用 honk。honk 不走构建 feed，
-# 由 daeuniverse apk feed 提供（honk-0.1.0_beta5-r1.apk），feed 仓库与签名由 Handles.sh 写入镜像，刷机后 apk 安装（见 PLAN.md）。
-# （此前官方 HomeProxy + sing-box 1.14.4 的准备已全部作废，见 PLAN.md。)
+# 618-v3：官方 HomeProxy（immortalwrt/homeproxy，master）。生成器支持 proxy_mode，默认 redirect_tproxy（TProxy 模式）。
+# sing-box 不从这里来：它由 feeds/packages 提供（master 现为 1.14.3，见 PLAN.md 第 2 节）；不要加回 viking 克隆——
+# viking 会把 sing-box 顶到 1.15.0-alpha.13 且带 AI Edition HomeProxy（TUN-only、无 proxy_mode，正是崩溃循环的来源）。
+# 钉死方式 = 不克隆 viking + Handles.sh 版本守卫（feed 的 sing-box 不是 1.14.x 即中断构建）。
+UPDATE_PACKAGE "homeproxy" "immortalwrt/homeproxy" "master"
 UPDATE_PACKAGE "momo" "nikkinikki-org/OpenWrt-momo" "main"
 UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
 #UPDATE_PACKAGE "openclash" "vernesong/OpenClash" "dev" "pkg"
@@ -79,13 +81,13 @@ UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
 #UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "quickfile" "sbwml/luci-app-quickfile" "main"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "timecontrol" "sirpdboy/luci-app-timecontrol" "main"
-# 618-v2 honk: viking 克隆已删除——它只提供 sing-box + AI Edition HomeProxy + axonhub/gecoosac/timewol，
-# 其中 sing-box/HomeProxy 已移除，其余在 GENERAL.txt 里都是 =n 或未选，克隆它只浪费构建时间。
-# （此前 sing-box 1.14.4 钉死与 multi_queue 删除段已随 HomeProxy 一并作废，见 PLAN.md。)
+# 618-v3：viking 克隆不加回——它只提供 sing-box（会顶到 1.15.0-alpha.13）+ AI Edition HomeProxy + axonhub/gecoosac/timewol，
+# 其中 sing-box/HomeProxy 走 feed 与官方克隆，其余在 GENERAL.txt 里都是 =n 或未选，克隆它只会带回 alpha 版 sing-box 与 TUN-only 的 AI Edition。
+# （此前作废方向里的 sing-box 1.14.4 钉死段与 multi_queue 删除段均不再需要：feed 已是 1.14.3，当前官方生成器也不含 multi_queue，见 PLAN.md。)
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 
 
-# REMOVED for 618-v2: dae/daed 已移除（dae 2.1.1 不再编入；daed 为已归档的 dae 面板，
+# REMOVED for 618-v3: honk 不再是代理（V2 的 honk 方向已废弃）；dae/daed 已移除（dae 2.1.1 不再编入；daed 为已归档的 dae 面板，
 # Handles.sh 里原有的强制禁用 daed 不再需要亦无害，予以保留作兜底）
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
 # PRUNED for OWRT trial (not used): UPDATE_PACKAGE "luci-app-nginx-manager" "hello-yunshu/luci-app-nginx-manager" "main"
