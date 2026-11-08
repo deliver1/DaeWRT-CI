@@ -2,7 +2,7 @@
 
 PKG_PATH="$GITHUB_WORKSPACE/$WRT_DIR/package/"
 
-# 618-v2 honk: HomeProxy 预置数据块已删除（HomeProxy/sing-box 已移除，不再需要 surge-rules geo 数据）。
+# 618-v2 起 HomeProxy 预置数据块已删除（HomeProxy/sing-box 已移除，不再需要 surge-rules geo 数据）；V4 同样不加回。
 
 #修改argon主题字体和颜色
 if [ -d "$PKG_PATH/luci-theme-argon" ]; then
@@ -182,20 +182,9 @@ SYSCTLEOF
 echo "  sysctl config added"
 
 # ============================================================
-# 618-v2 honk: 覆盖层文件（bpffs 开机挂载 + daeuniverse apk feed）
+# 618-v4 mihomo via OpenClash: honk 覆盖层安装块已删除（bpffs 开机挂载脚本与 daeuniverse apk feed 仓库/签名均不再需要；
+# mihomo 不用 eBPF/bpffs，OpenClash 由 Packages.sh 从源码提取后随固件编译，不走 apk feed；本文件不再向构建根目录的 files/ 写任何东西）。
+# OpenClash 自带 uci-defaults（首次启动自动建 /etc/openclash/、设核心型号、生成默认配置），不需要 files/ 覆盖层预置配置。
 # ============================================================
-# 仓库 files/etc/（bpffs 启动脚本、apk feed 仓库与签名）复制到构建根目录的 files/ 覆盖层，
-# OpenWrt 构建会把 files/ 原样打进镜像。注意：本仓库 files/ 顶层还有 BDF 文件（board-2.bin），
-# 这里只复制 files/etc/，不碰 BDF。bpffs 脚本需可执行，复制后显式 chmod +x（防 web UI 上传丢权限）。
-echo ">>> Installing honk overlay (bpffs init + daeuniverse apk feed)..."
-if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
-	mkdir -p "$WRT_ROOT/files"
-	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
-	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
-	echo "  honk overlay copied:"
-	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
-else
-	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount, apk feed will not be preinstalled)"
-fi
 
 echo ">>> Handles.sh done"
