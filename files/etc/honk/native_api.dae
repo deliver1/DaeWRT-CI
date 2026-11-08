@@ -1,0 +1,15 @@
+# honk native_api 单独配置文件（只放 Doona 面板和密钥）
+# 主配置 config.dae 里不含密钥，Doona 才能改节点和规则。
+# 用法：和 config.dae 放同一个目录（/etc/honk/），config.dae 开头用 include 引用它。
+# 安全：这是固件内置的默认密钥，仅限局域网访问 Doona 时用；
+# 首次打开 Doona 后请立即在设置里改掉它，不要长期用默认密钥。
+
+experimental {
+    native_api {
+        enabled: true
+        listen: '0.0.0.0:9527'
+        secret: 'WX89XctQMphdNP6iUMWq'
+        ui: 'embedded'
+        config_write: true
+    }
+}
