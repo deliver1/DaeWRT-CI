@@ -2,7 +2,9 @@
 
 PKG_PATH="$GITHUB_WORKSPACE/$WRT_DIR/package/"
 
-# 618-v2 honk: HomeProxy 预置数据块已删除（HomeProxy/sing-box 已移除，不再需要 surge-rules geo 数据）。
+# 618-v3：官方 HomeProxy 不需要预置 geo 数据块——分流用的 geoip-cn / geosite-cn / geosite-noncn 是 sing-box 远程 SRS 规则集，
+# 首次启动时由 sing-box 经主节点从 fastly.jsdelivr.net 下载（generate_client.uc 里 download_detour: main-out），
+# 因此 Handles.sh 里不加 surge-rules 预置块；v2ray-geoip/geosite 仍由 GENERAL.txt 保留（见 PLAN.md 第 3 节）。
 
 #修改argon主题字体和颜色
 if [ -d "$PKG_PATH/luci-theme-argon" ]; then
@@ -182,20 +184,43 @@ SYSCTLEOF
 echo "  sysctl config added"
 
 # ============================================================
-# 618-v2 honk: 覆盖层文件（bpffs 开机挂载 + daeuniverse apk feed）
+# 618-v3：sing-box 版本守卫 + 官方 HomeProxy 来源守卫（构建前失败，优于刷机后才发现版本错）
 # ============================================================
-# 仓库 files/etc/（bpffs 启动脚本、apk feed 仓库与签名）复制到构建根目录的 files/ 覆盖层，
-# OpenWrt 构建会把 files/ 原样打进镜像。注意：本仓库 files/ 顶层还有 BDF 文件（board-2.bin），
-# 这里只复制 files/etc/，不碰 BDF。bpffs 脚本需可执行，复制后显式 chmod +x（防 web UI 上传丢权限）。
-echo ">>> Installing honk overlay (bpffs init + daeuniverse apk feed)..."
-if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
-	mkdir -p "$WRT_ROOT/files"
-	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
-	[ -f "$WRT_ROOT/files/etc/init.d/bpffs" ] && chmod +x "$WRT_ROOT/files/etc/init.d/bpffs"
-	echo "  honk overlay copied:"
-	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
+# 钉死逻辑（见 PLAN.md 第 2 节）：sing-box 由 feeds/packages 提供，master 现为 1.14.3；
+# viking 克隆已删（它是 1.15.0-alpha.13 的来源）。此处只守卫、不改写版本——
+# feed 若升到 1.14.4 仍放行（同属 1.14 稳定线）；若变成 1.15.x（alpha）或其它，直接中断构建。
+echo ">>> Verifying sing-box version pin (1.14.x) and official HomeProxy source..."
+SB_MK="$WRT_ROOT/feeds/packages/net/sing-box/Makefile"
+if [ ! -f "$SB_MK" ]; then
+	echo "  ERROR: sing-box Makefile not found at $SB_MK (feeds update failed?)"
+	exit 1
+fi
+SB_VER=$(grep -m1 -Po '^PKG_VERSION:=\K.*' "$SB_MK" | tr -d '[:space:]')
+echo "  feeds/packages sing-box version: $SB_VER"
+case "$SB_VER" in
+	1.14.*)
+		echo "  sing-box 1.14.x confirmed, continuing"
+		;;
+	*)
+		echo "  ERROR: sing-box is $SB_VER, not 1.14.x — V3 pins sing-box to the 1.14 stable line (1.15 is alpha-only)."
+		echo "  Refusing to build with the wrong sing-box version. Update the pin in Handles.sh / GENERAL.txt first."
+		exit 1
+		;;
+esac
+
+# 官方 HomeProxy 的 generate_client.uc 必然含 proxy_mode（默认 redirect_tproxy）；
+# AI Edition 的生成器里完全没有 proxy_mode 字符串（TUN-only，正是崩溃循环的来源）。以此区分两者，防克隆源被错换。
+HP_GEN="$WRT_ROOT/package/homeproxy/root/etc/homeproxy/scripts/generate_client.uc"
+if [ ! -f "$HP_GEN" ]; then
+	echo "  ERROR: official HomeProxy generator not found at $HP_GEN (homeproxy clone failed?)"
+	exit 1
+fi
+if grep -q "proxy_mode" "$HP_GEN"; then
+	echo "  official HomeProxy generator confirmed (contains proxy_mode)"
 else
-	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount, apk feed will not be preinstalled)"
+	echo "  ERROR: generate_client.uc has no proxy_mode — this is NOT the official immortalwrt/homeproxy."
+	echo "  (The AI Edition generator is TUN-only and ignores proxy_mode; it caused the sing-box crash loop.)"
+	exit 1
 fi
 
 echo ">>> Handles.sh done"
