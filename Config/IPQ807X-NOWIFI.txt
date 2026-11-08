@@ -27,7 +27,8 @@ CONFIG_KERNEL_NET_CLS_CGROUP=y
 CONFIG_KERNEL_PERF_EVENTS=y
 # CONFIG_KERNEL_PREEMPT_RCU is not set
 
-# ===== eBPF/BTF 内核选项（honk 所需；dae 已移除，honk 是当前唯一代理，与 IPQ807X-WIFI.txt 同步） =====
+# ===== eBPF/BTF 内核选项（V4：mihomo/OpenClash 不用 eBPF；此处原样保留，无害——function.sh 的 cat_kernel_config/cat_ebpf_config 也会写 BTF，
+# 与 IPQ807X-WIFI.txt 同步；去掉它也不会让 mihomo 变快，留着可供以后再试 honk/dae 时直接用） =====
 CONFIG_KERNEL_BPF_SYSCALL=y
 CONFIG_KERNEL_BPF_JIT=y
 CONFIG_KERNEL_DEBUG_INFO=y
@@ -39,7 +40,8 @@ CONFIG_KERNEL_NET_SCH_INGRESS=y
 CONFIG_KERNEL_KALLSYMS=y
 CONFIG_KERNEL_KALLSYMS_ALL=y
 
-# ===== honk 显式钉死（how-to-start 要求；此前靠 kmod-sched-core 等间接带入，v2 显式写死，防 dae 移除后掉落） =====
+# ===== mihomo/OpenClash 显式钉死（V4：沿用 v2 的 BTF/eBPF 钉死，原样保留，见上；mihomo 本身不需要这些，
+# 但 function.sh 的 cat_kernel_config/cat_ebpf_config 也会写 BTF，删了这里也删不掉内核里的 BTF，故保留不动） =====
 # 注意：CONFIG_NET_XGRESS 不是主线内核符号（见 PLAN.md），等价能力是下面的 NET_INGRESS + NET_EGRESS（TC 入/出口）。
 CONFIG_KERNEL_BPF=y
 CONFIG_KERNEL_NET_SCHED=y
