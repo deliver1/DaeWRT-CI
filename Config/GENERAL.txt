@@ -1,11 +1,18 @@
 # ============================================================
-# GENERAL.txt - Redmi AX6 轻量化（honk + NSS + iperf3，无 dae/HomeProxy/sing-box）
+# GENERAL.txt - Redmi AX6 轻量化（mihomo via OpenClash + NSS + iperf3，无 dae/HomeProxy/sing-box/honk）
 # ============================================================
 
-# ---------- 代理核心：honk（dae/HomeProxy/sing-box 均已移除） ----------
-# honk 不编进固件：daeuniverse apk feed 提供 honk-0.1.0_beta5-r1.apk（aarch64 musl-full 静态二进制，内嵌 Doona 面板），
-# 刷机后 apk add honk@daeuniverse luci-app-honk@daeuniverse。feed 仓库与签名由 Handles.sh 写入镜像（见 PLAN.md）。
-# 因此这里没有 CONFIG_PACKAGE_honk；下面只保留 honk 运行时需要的内核模块与 geo 数据。
+# ---------- 代理核心：mihomo via OpenClash（dae/HomeProxy/sing-box/honk 均已移除） ----------
+# OpenClash（luci-app-openclash）由 Packages.sh 从 vernesong/OpenClash 的 dev 分支以 "pkg" 方式提取后随固件编译；
+# mihomo 核心默认不随包附带——但本分支开 CONFIG_LUCI_APP_OPENCLASH_INCLUDE_CORE=y，
+# 构建时从 OpenClash 的 core 分支下载对应架构的 clash_meta（aarch64 -> linux-arm64），直接装进镜像 /etc/openclash/core/clash_meta，
+# 刷机后无需再下载核心（见 PLAN.md 第 2 节；若构建时下载失败，改回 =n，刷机后在面板里下载核心）。
+# 因此这里只有 CONFIG_PACKAGE_luci-app-openclash 与 INCLUDE_CORE 两行；核心二进制本身不由 GENERAL.txt 指定。
+
+# ---------- OpenClash（mihomo 客户端，LuCI 面板） ----------
+CONFIG_PACKAGE_luci-app-openclash=y
+# 构建时把 mihomo 核心编进镜像（dev 分支 Makefile 的 LUCI_APP_OPENCLASH_INCLUDE_CORE 选项，默认 n；见 PLAN.md）。
+CONFIG_LUCI_APP_OPENCLASH_INCLUDE_CORE=y
 
 # ---------- 插件（只留 UPnP） ----------
 CONFIG_PACKAGE_luci-app-upnp=y
@@ -36,7 +43,7 @@ CONFIG_PACKAGE_ipq-wifi-redmi_ax6=n
 CONFIG_PACKAGE_kmod-nft-offload=n
 CONFIG_PACKAGE_kmod-nf-flow=n
 
-# ---------- 透明代理 / 网络诊断内核模块（honk 建 dae0 接口需 kmod-tun；dae/HomeProxy/sing-box 已移除） ----------
+# ---------- 透明代理 / 网络诊断内核模块（mihomo TProxy 必需 kmod-nft-tproxy；kmod-tun 供 TUN 模式备用） ----------
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-veth=y
 CONFIG_PACKAGE_kmod-inet-diag=y
@@ -50,13 +57,14 @@ CONFIG_PACKAGE_kmod-sched-bpf=y
 # ---------- nftables 与 NAT ----------
 CONFIG_PACKAGE_kmod-nft-core=y
 CONFIG_PACKAGE_kmod-nft-nat=y
-CONFIG_PACKAGE_kmod-nft-tproxy=n
-CONFIG_PACKAGE_kmod-nft-socket=n
-# honk 不用 TProxy（eBPF + NFQUEUE），HomeProxy 已移除，故两者都关掉；6.18 版曾含 kmod-nft-tproxy，v2 不再需要。
+# mihomo TProxy 必需（Firewall4 下 OpenClash 的 Makefile 也会自动选上，见 PLAN.md；这里显式钉死防掉落）。
+CONFIG_PACKAGE_kmod-nft-tproxy=y
+# Nikki 备用（OpenClash 不需要；留着无害，以后若换 Nikki 不用改固件；见 PLAN.md）。
+CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
-# honk UDP 首包暂存必需：nft queue（NFQUEUE 320）+ netlink queue；6.18 版曾由 dae 间接带入，v2 显式钉死。
-CONFIG_PACKAGE_kmod-nft-queue=y
-CONFIG_PACKAGE_kmod-nfnetlink-queue=y
+# honk 专用的 NFQUEUE 暂存已随 honk 移除：kmod-nft-queue / kmod-nfnetlink-queue 改回 =n（mihomo 不用 NFQUEUE 320）。
+CONFIG_PACKAGE_kmod-nft-queue=n
+CONFIG_PACKAGE_kmod-nfnetlink-queue=n
 
 # ---------- 连接跟踪 ----------
 CONFIG_PACKAGE_kmod-nf-conntrack=y
@@ -115,22 +123,38 @@ CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_tmux=y
 CONFIG_PACKAGE_nano-full=y
 CONFIG_PACKAGE_zoneinfo-asia=y
-CONFIG_PACKAGE_bash=n
+# bash：OpenClash 官方 README 列为运行时依赖；master 分支 Makefile 的 DEPENDS 有 +bash，
+# dev 分支 0.48.014 的 DEPENDS 漏了它（见 PLAN.md），为保险显式保留。
+CONFIG_PACKAGE_bash=y
 CONFIG_PACKAGE_tcpdump=n
 CONFIG_PACKAGE_bind-dig=n
 CONFIG_PACKAGE_bind-nslookup=n
-CONFIG_PACKAGE_ip-full=n
+# ip-full：OpenClash DEPENDS 明确要求（v2 曾是 =n，V4 必须开；策略路由与 TUN 设备操作需要完整版 ip 命令）。
+CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_dmesg=y
 CONFIG_PACKAGE_openssh-keygen=y
 CONFIG_PACKAGE_openssh-sftp-server=y
 CONFIG_PACKAGE_openssl-util=y
 CONFIG_PACKAGE_xz-utils=n
-CONFIG_PACKAGE_v2ray-geodata-updater=y
-# honk 路由规则用 geoip/geosite 数据（原由 dae 带入，dae 移除后显式保留）；ca-bundle 供 geo 更新器 HTTPS 下载用。
+# OpenClash DEPENDS：ruby + ruby-yaml（订阅/配置的 YAML 处理用）、unzip（核心与 geo 文件解压用）。
+CONFIG_PACKAGE_ruby=y
+CONFIG_PACKAGE_ruby-yaml=y
+CONFIG_PACKAGE_unzip=y
+# dnsmasq-full：OpenClash DEPENDS 明确要求，替代默认 dnsmasq（两者二选一，选 full 后 dnsmasq 自动取消）。
+# dnsmasq-full 是超集，读同一份 /etc/config/dhcp，Elena 现有的 DHCP/DNS 设置（Ali/Tencent 上游、filter_aaaa、PCDN 屏蔽）随设置保留刷机原样带过来。
+# dnsmasq_full_nftset 是 Firewall4 下 OpenClash 需要的 nftset 变体（Makefile 的 config 段在 firewall4 时自动选上，这里显式钉死）。
+CONFIG_PACKAGE_dnsmasq=n
+CONFIG_PACKAGE_dnsmasq-full=y
+CONFIG_PACKAGE_dnsmasq_full_nftset=y
+# ca-bundle：OpenClash DEPENDS 明确要求（核心/订阅/geo 文件 HTTPS 下载用），保留。
 CONFIG_PACKAGE_ca-bundle=y
-CONFIG_PACKAGE_v2ray-geoip=y
-CONFIG_PACKAGE_v2ray-geosite=y
+# v2ray geo 数据已随 dae/honk 移除：mihomo/OpenClash 不用系统 v2ray-geoip/geosite，
+# 它自己在 /etc/openclash/ 下下载并维护 GeoIP.dat / GeoSite.dat / GeoIPASN.mmdb 等（见 PLAN.md），
+# 所以 v2ray-geoip、v2ray-geosite 与配套的 v2ray-geodata-updater（周日 04:00 的更新器）全部改回 =n。
+CONFIG_PACKAGE_v2ray-geodata-updater=n
+CONFIG_PACKAGE_v2ray-geoip=n
+CONFIG_PACKAGE_v2ray-geosite=n
 
 # ---------- 已关闭的内核模块 ----------
 CONFIG_PACKAGE_kmod-bonding=n
