@@ -182,12 +182,14 @@ SYSCTLEOF
 echo "  sysctl config added"
 
 # ============================================================
-# 618-v2 honk: 覆盖层文件（bpffs 开机挂载 + daeuniverse apk feed）
+# 618-v2b honk: 覆盖层文件（bpffs 开机挂载）+ honk 二进制编进固件
+# V2 原版走 daeuniverse apk feed 装 honk，但 feed 是按 OpenWrt 25.12/6.12 打的包，
+# 在 ImmortalWrt SNAPSHOT 6.18 上装不装得上没验证过；装不上 V2 就完全没代理可用。
+# v2b 改成构建时直接从 honk 官方 Release 下载 full 包，把 honk-core 编进固件，
+# 不再依赖 feed（feed 的仓库与签名文件已从本分支删除）。
+# honk-core 是 full 版，doona 已内嵌在二进制里，不需要另外装 doona 文件。
 # ============================================================
-# 仓库 files/etc/（bpffs 启动脚本、apk feed 仓库与签名）复制到构建根目录的 files/ 覆盖层，
-# OpenWrt 构建会把 files/ 原样打进镜像。注意：本仓库 files/ 顶层还有 BDF 文件（board-2.bin），
-# 这里只复制 files/etc/，不碰 BDF。bpffs 脚本需可执行，复制后显式 chmod +x（防 web UI 上传丢权限）。
-echo ">>> Installing honk overlay (bpffs init + daeuniverse apk feed)..."
+echo ">>> Installing honk overlay (bpffs init)..."
 if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	mkdir -p "$WRT_ROOT/files"
 	cp -a "$GITHUB_WORKSPACE/files/etc" "$WRT_ROOT/files/"
@@ -195,7 +197,36 @@ if [ -d "$GITHUB_WORKSPACE/files/etc" ]; then
 	echo "  honk overlay copied:"
 	find "$WRT_ROOT/files/etc" -type f | sed 's/^/    /'
 else
-	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount, apk feed will not be preinstalled)"
+	echo "  WARNING: $GITHUB_WORKSPACE/files/etc not found; honk overlay skipped (bpffs will not auto-mount)"
 fi
+
+# ============================================================
+# 618-v2b: 构建时下载 honk 并编进固件（不再走 daeuniverse apk feed）
+# 下载失败则直接 exit 1（在 Custom Settings 阶段就报错，不等到刷机后才发现装不上）。
+# ============================================================
+echo ">>> Baking honk-core into firmware..."
+HONK_VER="v0.1.0-beta.5"
+HONK_TGZ="honk-core-${HONK_VER}-aarch64-unknown-linux-musl-full.tar.gz"
+HONK_URL="https://github.com/daeuniverse/honk/releases/download/${HONK_VER}/${HONK_TGZ}"
+HONK_MIRROR="https://gh-proxy.com/https://github.com/daeuniverse/honk/releases/download/${HONK_VER}/${HONK_TGZ}"
+HONK_TMP="$(mktemp -d)"
+if curl -fSL --connect-timeout 30 --retry 2 -o "$HONK_TMP/$HONK_TGZ" "$HONK_URL" || curl -fSL --connect-timeout 30 --retry 2 -o "$HONK_TMP/$HONK_TGZ" "$HONK_MIRROR"; then
+	tar -xzf "$HONK_TMP/$HONK_TGZ" -C "$HONK_TMP"
+	HONK_BIN="$HONK_TMP/honk-core-${HONK_VER}-aarch64-unknown-linux-musl-full/honk-core"
+	HONK_SIZE="$(stat -c%s "$HONK_BIN" 2>/dev/null || echo 0)"
+	if [ -f "$HONK_BIN" ] && [ "$HONK_SIZE" -gt 10000000 ]; then
+		mkdir -p "$WRT_ROOT/files/usr/bin"
+		cp "$HONK_BIN" "$WRT_ROOT/files/usr/bin/honk-core"
+		chmod +x "$WRT_ROOT/files/usr/bin/honk-core"
+		echo "  honk-core baked in: $HONK_SIZE bytes -> $WRT_ROOT/files/usr/bin/honk-core"
+	else
+		echo "  ERROR: honk-core binary missing or too small after extract (size=$HONK_SIZE)"
+		exit 1
+	fi
+else
+	echo "  ERROR: honk download failed (github + mirror)"
+	exit 1
+fi
+rm -rf "$HONK_TMP"
 
 echo ">>> Handles.sh done"
