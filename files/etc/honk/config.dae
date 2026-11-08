@@ -1,0 +1,54 @@
+# honk 默认配置（v2b 固件内置，开机即用，无节点）
+# 刷机后 honk 自动启动，全部流量直连，Doona 面板可打开；
+# 在 Doona 里粘贴你的完整配置（含节点）或添加节点后，代理即生效，全程浏览器操作，无需 SSH。
+# 首次打开 Doona 后请立即改掉 native_api.dae 里的密钥。
+# 注意：这个文件不含任何节点（节点是凭证，不进公开仓库）。
+
+include {
+    native_api.dae
+}
+
+global {
+    log_level: info
+    lan_interface: br-lan
+    wan_interface: auto
+    data_dir: '/tmp/honk'
+    auto_config_kernel_parameter: true
+    bootstrap_resolver: '1.1.1.1:53'
+    tcp_check_url: 'http://cp.cloudflare.com,1.1.1.1,2606:4700:4700::1111'
+    tcp_check_http_method: HEAD
+    udp_check_dns: 'dns.google:53,8.8.8.8,2001:4860:4860::8888'
+    check_interval: 60s
+    check_tolerance: 50ms
+    dial_mode: domain
+    allow_insecure: true
+    sniffing_timeout: 30ms
+    tls_implementation: utls
+    utls_imitate: chrome_auto
+}
+
+dns {
+    upstream {
+        alidns: 'udp://223.5.5.5:53'
+        googledns: 'https://dns.google/dns-query'
+    }
+    routing {
+        request {
+            qname(geosite:cn) -> alidns
+            fallback: googledns
+        }
+        response {
+            upstream(googledns) -> accept
+            ip(geoip:private) && !qname(geosite:cn) -> googledns
+            fallback: accept
+        }
+    }
+}
+
+routing {
+    dip(224.0.0.0/3, 'ff00::/8') -> direct
+    dip(geoip:private) -> direct
+    dip(geoip:cn) -> direct
+    domain(geosite:cn) -> direct
+    fallback: direct
+}
