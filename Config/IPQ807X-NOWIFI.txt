@@ -27,7 +27,7 @@ CONFIG_KERNEL_NET_CLS_CGROUP=y
 CONFIG_KERNEL_PERF_EVENTS=y
 # CONFIG_KERNEL_PREEMPT_RCU is not set
 
-# ===== eBPF/BTF 内核选项（honk 所需；dae 已移除，honk 是当前唯一代理，与 IPQ807X-WIFI.txt 同步） =====
+# ===== eBPF/BTF 内核选项（V3 保留：honk 已移除，BTF/eBPF 对 HomeProxy 无害，供以后试验用，与 IPQ807X-WIFI.txt 同步） =====
 CONFIG_KERNEL_BPF_SYSCALL=y
 CONFIG_KERNEL_BPF_JIT=y
 CONFIG_KERNEL_DEBUG_INFO=y
@@ -39,7 +39,7 @@ CONFIG_KERNEL_NET_SCH_INGRESS=y
 CONFIG_KERNEL_KALLSYMS=y
 CONFIG_KERNEL_KALLSYMS_ALL=y
 
-# ===== honk 显式钉死（how-to-start 要求；此前靠 kmod-sched-core 等间接带入，v2 显式写死，防 dae 移除后掉落） =====
+# ===== BPF/TC 显式钉死（原为 honk 要求；V3 保留，无害，供以后用） =====
 # 注意：CONFIG_NET_XGRESS 不是主线内核符号（见 PLAN.md），等价能力是下面的 NET_INGRESS + NET_EGRESS（TC 入/出口）。
 CONFIG_KERNEL_BPF=y
 CONFIG_KERNEL_NET_SCHED=y
